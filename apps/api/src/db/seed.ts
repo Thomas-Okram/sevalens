@@ -271,7 +271,7 @@ sqlite.transaction(() => {
     let decisionDays = Math.exp(Math.log(10 + blk.remoteness * 8) + gauss() * 0.45);
     if (outlier) decisionDays = 0.05 + rnd() * 0.7;
     // a small natural backlog everywhere
-    if (!outlier && chance(0.015)) decisionDays = 400;
+    if (!outlier && chance(0.025)) decisionDays = 35 + rnd() * 170;
     const stuck = forceStuck || (blk.id === LAMSHANG.id && ageDays <= 90 && chance(0.85));
     let status: string;
     let decidedAt: string | null = null;
