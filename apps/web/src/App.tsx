@@ -11,6 +11,7 @@ import Ask from './pages/Ask';
 import Privacy from './pages/Privacy';
 import Audit from './pages/Audit';
 import Actions from './pages/Actions';
+import DataIngest from './pages/DataIngest';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="actions" element={<Actions />} />
         <Route path="ask" element={<Ask />} />
         <Route path="privacy" element={<Privacy />} />
+        <Route path="ingest" element={user.role === 'STATE_ADMIN' ? <DataIngest /> : <Navigate to="/" replace />} />
         <Route path="audit" element={user.role === 'STATE_ADMIN' ? <Audit /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
