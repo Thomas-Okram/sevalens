@@ -1,7 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "npm ci --include=dev && npm run build"
+    "buildCommand": "npm run build"
   },
   "deploy": {
     "startCommand": "npm run db:migrate && npm run db:seed && npm run cache:warm && npm run start -w @sevalens/api",
