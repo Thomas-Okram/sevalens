@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MapPinned, Hourglass, ScanSearch, MessageSquareText, ShieldCheck, ScrollText, LogOut, Database } from 'lucide-react';
+import { LayoutDashboard, MapPinned, Hourglass, ScanSearch, MessageSquareText, ShieldCheck, ScrollText, LogOut, Database, UploadCloud } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useMeta } from '../lib/queries';
 import { fmtDate } from '../lib/format';
@@ -32,6 +32,7 @@ export function Layout() {
     { to: '/anomalies', label: 'Anomalies', icon: ScanSearch, show: true },
     { to: '/ask', label: 'Ask SevaLens', icon: MessageSquareText, show: true },
     { to: '/privacy', label: 'Data & privacy', icon: ShieldCheck, show: true },
+    { to: '/ingest', label: 'Data ingest', icon: UploadCloud, show: user?.role === 'STATE_ADMIN' },
     { to: '/audit', label: 'Audit log', icon: ScrollText, show: user?.role === 'STATE_ADMIN' },
   ];
   return (

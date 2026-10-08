@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { authRouter } from './routes/auth';
 import { analyticsRouter } from './routes/analytics';
 import { aiRouter } from './routes/ai';
-import { requireAuth } from './middleware/auth';
+import { ingestRouter } from './routes/ingest';
+import { requireAuth, requireRole } from './middleware/auth';
 import { errorHandler } from './lib/http';
 import { SqliteSessionStore } from './lib/sessionStore';
 
@@ -47,6 +48,7 @@ export function createApp() {
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRouter);
   app.use('/api/ai', requireAuth, aiRouter);
+  app.use('/api/ingest', requireAuth, requireRole('STATE_ADMIN'), ingestRouter);
   app.use('/api', requireAuth, analyticsRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
