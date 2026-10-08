@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { toLLMPayload, FORBIDDEN_KEYS } from './sanitize';
-import { keywordIntent } from './ask';
+import { describe, expect, it, vi } from 'vitest';
 import type { Snapshot } from '../services/snapshot';
+
+vi.mock('../db/client', () => ({ sqlite: { prepare: () => ({ get: () => undefined, run: () => undefined }) } }));
+const { toLLMPayload, FORBIDDEN_KEYS } = await import('./sanitize');
+const { keywordIntent, resolveDistrict } = await import('./ask');
 
 describe('toLLMPayload — PII never reaches the LLM', () => {
   const pii = {
@@ -48,7 +50,7 @@ describe('toLLMPayload — PII never reaches the LLM', () => {
 });
 
 describe('keyword intent fallback', () => {
-  const s = { districts: [{ id: 8, name: 'Ukhrul', code: 'UKL' }, { id: 1, name: 'Imphal West', code: 'IW' }] } as unknown as Snapshot;
+  const s = { districts: [{ id: 8, name: 'Ukhrul', code: 'UKL' }, { id: 1, name: 'Imphal West', code: 'IW' }, { id: 4, name: 'Thoubal', code: 'TBL' }, { id: 9, name: 'Kamjong', code: 'KJG' }, { id: 12, name: 'Churachandpur', code: 'CCP' }] } as unknown as Snapshot;
   it('maps the sample question to pending_by_block with district + scheme', () => {
     expect(keywordIntent(s, 'Which blocks in Ukhrul have the most pending widow pension cases?')).toMatchObject({ intent: 'pending_by_block', district: 'Ukhrul', scheme: 'IGNWPS' });
   });
@@ -57,5 +59,17 @@ describe('keyword intent fallback', () => {
     expect(keywordIntent(s, 'Show duplicate beneficiaries in Imphal West')).toMatchObject({ intent: 'anomalies_list', type: 'duplicate_beneficiary', district: 'Imphal West' });
     expect(keywordIntent(s, 'payment failures by block').intent).toBe('disbursement_failures');
     expect(keywordIntent(s, 'top 5 areas to visit').intent).toBe('attention_ranking');
+  });
+  it('survives typos, Hinglish and vague wording', () => {
+    expect(keywordIntent(s, 'whch blok in ukrul hav most pendng widdow pensn')).toMatchObject({ intent: 'pending_by_block', district: 'Ukhrul', scheme: 'IGNWPS' });
+    expect(keywordIntent(s, 'duplicat ppl in thoubal??')).toMatchObject({ intent: 'anomalies_list', type: 'duplicate_beneficiary', district: 'Thoubal' });
+    expect(keywordIntent(s, 'kamjong coverge v low why')).toMatchObject({ intent: 'coverage_gap', district: 'Kamjong' });
+    expect(keywordIntent(s, 'churachandpur paisa nahi aa raha')).toMatchObject({ intent: 'disbursement_failures', district: 'Churachandpur' });
+    expect(keywordIntent(s, 'where is the problem').intent).toBe('attention_ranking');
+  });
+  it('resolves misspelt district names from the model', () => {
+    expect(resolveDistrict(s, 'Ukrul')?.name).toBe('Ukhrul');
+    expect(resolveDistrict(s, 'Churachandpr')?.name).toBe('Churachandpur');
+    expect(resolveDistrict(s, 'Senapati')).toBeNull();
   });
 });

@@ -4,10 +4,13 @@
  * API runs the safe, RBAC-scoped query; the LLM then summarises the aggregate rows.
  * Without an API key a keyword matcher and a template summary are used instead.
  */
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { askIntentSchema, type AskIntent, type AskIntentParams, type AskResult } from '@sevalens/shared';
 import { STAGE_LABELS } from '../analytics';
 import { ageInDays, asOfMs } from '../analytics/pendency';
+import { levenshtein } from '../analytics/similarity';
+import { sqlite } from '../db/client';
 import type { Snapshot } from '../services/snapshot';
 import { aiModel, callJson, LlmUnavailable } from './llm';
 import { toLLMPayload } from './sanitize';
@@ -46,14 +49,45 @@ export function resolveScheme(s: Snapshot, text: string | null | undefined) {
 export function resolveDistrict(s: Snapshot, text: string | null | undefined) {
   if (!text) return null;
   const t = norm(text);
-  return s.districts.find((d) => norm(d.name) === t || norm(d.code) === t) ?? s.districts.find((d) => t.includes(norm(d.name))) ?? null;
+  return (
+    s.districts.find((d) => norm(d.name) === t || norm(d.code) === t) ??
+    s.districts.find((d) => t.includes(norm(d.name))) ??
+    // misspellings such as "Ukrul" or "Churachandpu"
+    s.districts.find((d) => t.length >= 4 && levenshtein(t, norm(d.name)) <= (t.length >= 8 ? 2 : 1)) ??
+    null
+  );
+}
+
+// ---------- typo tolerance for the keyword fallback ----------
+const VOCAB = [
+  'pending', 'pendency', 'pension', 'widow', 'block', 'blocks', 'district', 'districts', 'scheme', 'schemes',
+  'duplicate', 'duplicates', 'coverage', 'payment', 'payments', 'failure', 'failures', 'failed', 'anomaly', 'anomalies',
+  'deceased', 'overdue', 'backlog', 'enrolment', 'enrollment', 'disability', 'maternity', 'scholarship', 'elderly',
+  'suspicious', 'unusual', 'breach', 'breaches', 'officer', 'lowest', 'highest', 'attention',
+];
+
+/** Snap misspelt words ("pendng", "duplicat", "ukrul") to the nearest known term, if the match is unambiguous. */
+export function correctTypos(s: Snapshot, text: string): string {
+  const vocab = [...VOCAB, ...s.districts.flatMap((d) => d.name.toLowerCase().split(/\s+/))];
+  return text.replace(/[a-z]{4,}/g, (w) => {
+    if (vocab.includes(w)) return w;
+    const max = w.length >= 8 ? 2 : 1;
+    let best: string | null = null;
+    let bestD = Infinity;
+    let tie = false;
+    for (const v of vocab) {
+      const d = levenshtein(w, v);
+      if (d < bestD) { best = v; bestD = d; tie = false; } else if (d === bestD && v !== best) tie = true;
+    }
+    return best && bestD <= max && !tie ? best : w;
+  });
 }
 
 // ---------- keyword fallback ----------
 export function keywordIntent(s: Snapshot, q: string): AskIntentParams {
-  const text = q.toLowerCase();
+  const text = correctTypos(s, q.toLowerCase());
   const district = s.districts.find((d) => text.includes(d.name.toLowerCase()))?.name ?? null;
-  const schemeHit = SCHEME_ALIASES.find(([re]) => re.test(q));
+  const schemeHit = SCHEME_ALIASES.find(([re]) => re.test(text));
   const scheme = schemeHit ? schemeHit[1] : null;
   const level = /\bblocks?\b/.test(text) ? 'block' : /\bdistricts?\b/.test(text) ? 'district' : undefined;
   const n = Number(/\b(?:top|first)\s+(\d{1,2})\b/.exec(text)?.[1]);
@@ -62,9 +96,9 @@ export function keywordIntent(s: Snapshot, q: string): AskIntentParams {
     const type = /duplicate/.test(text) ? 'duplicate_beneficiary' : /deceased|dead|death/.test(text) ? 'deceased_paid' : /officer/.test(text) ? 'officer_outlier' : null;
     return { intent: 'anomalies_list', district, type, limit };
   }
-  if (/fail|bounce|return|disburs|payment/.test(text)) return { intent: 'disbursement_failures', district, limit };
+  if (/fail|bounce|return|disburs|payment|paisa|paise|money|bhugtan/.test(text)) return { intent: 'disbursement_failures', district, limit };
   if (/sla|breach|overdue|delay/.test(text) && /scheme/.test(text)) return { intent: 'sla_breach_by_scheme', district };
-  if (/pending|pendency|stuck|backlog|open application|waiting|overdue|sla|delay/.test(text)) return { intent: 'pending_by_block', district, scheme, limit };
+  if (/pending|pendency|stuck|backlog|open application|waiting|overdue|sla|delay|atka|ruka/.test(text)) return { intent: 'pending_by_block', district, scheme, limit };
   if (/coverage|gap|not reached|unreached|excluded|enrol|left out|missing/.test(text)) return { intent: 'coverage_gap', district, scheme, level: level ?? (district ? 'block' : 'district'), limit };
   return { intent: 'attention_ranking', district, level: level ?? (district ? 'block' : 'district'), limit };
 }
@@ -216,31 +250,59 @@ function toIntentParams(raw: z.infer<typeof rawIntentSchema>): AskIntentParams |
   return r.success ? r.data : null;
 }
 
-const answerSchema = z.object({ answer: z.string().min(3).max(900) });
-const answerJsonSchema = { type: 'object', additionalProperties: false, required: ['answer'], properties: { answer: { type: 'string' } } };
+const answerSchema = z.object({ answer: z.string().min(3).max(600) });
+const answerJsonSchema = { type: 'object', additionalProperties: false, required: ['answer'], properties: { answer: { type: 'string', description: '2 sentences, at most 60 words.' } } };
+
+// ---------- cache (insights_cache) ----------
+// The intent is cached per question; the summary per question + exact result rows, so a
+// cached sentence can never describe numbers that have since changed (e.g. after a review).
+const askKey = (kind: string, s: Snapshot, parts: unknown) =>
+  `ask:${kind}:${s.asOf}:${createHash('sha256').update(JSON.stringify(parts)).digest('hex').slice(0, 32)}`;
+const normQuestion = (q: string) => q.toLowerCase().replace(/\s+/g, ' ').trim();
+
+function cacheGet<T>(key: string): T | null {
+  const row = sqlite.prepare('SELECT content FROM insights_cache WHERE key = ?').get(key) as { content: string } | undefined;
+  return row ? (JSON.parse(row.content) as T) : null;
+}
+function cacheSet(key: string, content: unknown) {
+  sqlite.prepare('INSERT INTO insights_cache (key, kind, district_id, content, source, model, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET content = excluded.content, model = excluded.model, created_at = excluded.created_at')
+    .run(key, 'ask', null, JSON.stringify(content), 'llm', aiModel(), new Date().toISOString());
+}
+
+const routerSystem = (s: Snapshot) => `You route questions from Manipur Social Welfare Department officers to ONE of these whitelisted analytics intents. You never write SQL.
+Intents: ${Object.entries(INTENT_LABELS).map(([k, v]) => `${k} = ${v}`).join('; ')}.
+Districts: ${s.districts.map((d) => d.name).join(', ')}.
+Schemes: ${s.schemes.map((x) => `${x.code} (${x.shortName})`).join(', ')}.
+Anomaly types: duplicate_beneficiary, deceased_paid, application_spike, rejection_spike, disbursement_failure_spike, officer_outlier, pendency_backlog.
+Questions are often typed fast: expect typos, SMS spelling, and English mixed with Hindi or Manipuri words. Infer the intended district and scheme and return the exact spelling from the lists above (e.g. "ukrul" -> Ukhrul, "CCpur" -> Churachandpur, "widdow pensn" -> IGNWPS).
+Mapping hints: pending / stuck / backlog / "kitna pending" -> pending_by_block; coverage / not reached / left out / low enrolment -> coverage_gap; payment / paisa / money not received / bank failure -> disbursement_failures; duplicate / fraud / dead people paid / suspicious officer -> anomalies_list with the matching type; overdue or SLA by scheme -> sla_breach_by_scheme; vague questions ("where is the problem", "what should I look at", "kya haal hai") -> attention_ranking.
+level is "block" when the question mentions blocks or names one district, otherwise "district"; null for intents that do not rank areas.
+Use null for any parameter not mentioned. If nothing fits, use attention_ranking.`;
 
 export async function ask(s: Snapshot, question: string, scopeDistrictId: number | null): Promise<AskResult> {
   let params: AskIntentParams | null = null;
   let source: AskResult['source'] = 'keyword';
   let fallbackReason: string | undefined;
-  try {
-    const raw = await callJson({
-      system: `You route questions from Manipur Social Welfare Department officers to ONE of these whitelisted analytics intents. You never write SQL.
-Intents: ${Object.entries(INTENT_LABELS).map(([k, v]) => `${k} = ${v}`).join('; ')}.
-Districts: ${s.districts.map((d) => d.name).join(', ')}.
-Schemes: ${s.schemes.map((x) => `${x.code} (${x.shortName})`).join(', ')}.
-Anomaly types: duplicate_beneficiary, deceased_paid, application_spike, rejection_spike, disbursement_failure_spike, officer_outlier, pendency_backlog.
-Use null for any parameter not mentioned. If nothing fits, use attention_ranking.`,
-      user: String(toLLMPayload(question)),
-      jsonSchema: intentJsonSchema,
-      schema: rawIntentSchema,
-      maxTokens: 400,
-    });
-    params = toIntentParams(raw);
-    if (params) source = 'llm';
-    else fallbackReason = 'AI intent did not validate';
-  } catch (e) {
-    fallbackReason = e instanceof LlmUnavailable ? e.message : 'AI unavailable';
+  const intentKey = askKey('intent', s, normQuestion(question));
+  params = cacheGet<AskIntentParams>(intentKey);
+  if (params) source = 'llm';
+  else {
+    try {
+      const raw = await callJson({
+        system: routerSystem(s),
+        user: String(toLLMPayload(question)),
+        jsonSchema: intentJsonSchema,
+        schema: rawIntentSchema,
+        maxTokens: 2000,
+      });
+      params = toIntentParams(raw);
+      if (params) {
+        source = 'llm';
+        cacheSet(intentKey, params);
+      } else fallbackReason = 'AI intent did not validate';
+    } catch (e) {
+      fallbackReason = e instanceof LlmUnavailable ? e.message : 'AI unavailable';
+    }
   }
   if (!params) params = keywordIntent(s, question);
 
@@ -248,19 +310,25 @@ Use null for any parameter not mentioned. If nothing fits, use attention_ranking
   let answer = templateAnswer(params, ex);
   let model: string | null = null;
   if (source === 'llm') {
-    try {
-      const out = await callJson({
-        system: 'You summarise query results for a government welfare officer in 2–3 plain sentences. Use only the numbers given; mention the top items and what they imply. Neutral language; describe places only by geography.',
-        user: JSON.stringify(toLLMPayload({ question, intent: params.intent, filters: ex.filters, note: ex.note ?? null, rows: ex.rows })),
-        jsonSchema: answerJsonSchema,
-        schema: answerSchema,
-        maxTokens: 600,
-      });
-      answer = out.answer;
-      model = aiModel();
-    } catch (e) {
-      fallbackReason = e instanceof LlmUnavailable ? `Summary: ${e.message}` : 'AI summary unavailable';
-      model = aiModel();
+    model = aiModel();
+    const summaryInput = toLLMPayload({ question, intent: params.intent, filters: ex.filters, note: ex.note ?? null, rows: ex.rows });
+    const summaryKey = askKey('answer', s, summaryInput);
+    const cached = cacheGet<string>(summaryKey);
+    if (cached) answer = cached;
+    else {
+      try {
+        const out = await callJson({
+          system: 'You summarise query results for a government welfare officer in at most 2 plain sentences (60 words). Lead with the direct answer to the question: name the top item and its key numbers, then the next one or what it implies. Use only the numbers given. Neutral language; describe places only by geography.',
+          user: JSON.stringify(summaryInput),
+          jsonSchema: answerJsonSchema,
+          schema: answerSchema,
+          maxTokens: 2000,
+        });
+        answer = out.answer;
+        cacheSet(summaryKey, answer);
+      } catch (e) {
+        fallbackReason = e instanceof LlmUnavailable ? `Summary: ${e.message}` : 'AI summary unavailable';
+      }
     }
   }
   return {

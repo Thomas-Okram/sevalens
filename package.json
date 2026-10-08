@@ -15,6 +15,7 @@
     "db:generate": "npm run db:generate -w @sevalens/api",
     "db:migrate": "npm run db:migrate -w @sevalens/api",
     "db:seed": "npm run db:seed -w @sevalens/api",
+    "ai:warm": "npm run ai:warm -w @sevalens/api",
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @sevalens/api\" \"npm run dev -w @sevalens/web\"",
     "build": "npm run build -w @sevalens/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
