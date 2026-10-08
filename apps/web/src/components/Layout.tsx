@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MapPinned, Hourglass, ScanSearch, MessageSquareText, ShieldCheck, ScrollText, LogOut, Database } from 'lucide-react';
+import { LayoutDashboard, MapPinned, Hourglass, ScanSearch, MessageSquareText, ShieldCheck, ScrollText, LogOut, Database, ClipboardList } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useMeta } from '../lib/queries';
 import { fmtDate } from '../lib/format';
@@ -30,6 +30,7 @@ export function Layout() {
     { to: user?.districtId ? `/districts/${user.districtId}` : '/districts', label: user?.districtId ? `${user.districtName} district` : 'District drill-down', icon: MapPinned, show: true },
     { to: '/pendency', label: 'Pendency', icon: Hourglass, show: true },
     { to: '/anomalies', label: 'Anomalies', icon: ScanSearch, show: true },
+    { to: '/actions', label: 'Field actions', icon: ClipboardList, show: true },
     { to: '/ask', label: 'Ask SevaLens', icon: MessageSquareText, show: true },
     { to: '/privacy', label: 'Data & privacy', icon: ShieldCheck, show: true },
     { to: '/audit', label: 'Audit log', icon: ScrollText, show: user?.role === 'STATE_ADMIN' },

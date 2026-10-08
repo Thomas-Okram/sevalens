@@ -27,6 +27,8 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const api = {
   get: <T>(url: string) => request<T>('GET', url),
   post: <T>(url: string, body?: unknown) => request<T>('POST', url, body ?? {}),
+  patch: <T>(url: string, body: unknown) => request<T>('PATCH', url, body),
+  del: <T>(url: string) => request<T>('DELETE', url),
 };
 
 export const qs = (params: Record<string, string | number | boolean | undefined | null>) => {

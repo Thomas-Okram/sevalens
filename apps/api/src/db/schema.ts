@@ -189,3 +189,23 @@ export const sessions = sqliteTable('sessions', {
   data: text('data').notNull(),
   expires: integer('expires').notNull(),
 });
+
+/** Field actions: an insight (anomaly, brief "visit first") turned into an assigned, trackable task. */
+export const fieldActions = sqliteTable(
+  'field_actions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    districtId: integer('district_id').notNull().references(() => districts.id),
+    blockId: integer('block_id').notNull().references(() => blocks.id),
+    anomalyId: text('anomaly_id'), // anomaly key (e.g. dup:block:12); anomalies are derived, so no FK
+    title: text('title').notNull(),
+    assignedToUserId: integer('assigned_to_user_id').notNull().references(() => users.id),
+    dueDate: text('due_date').notNull(), // YYYY-MM-DD
+    status: text('status', { enum: ['open', 'in_progress', 'done'] }).notNull().default('open'),
+    notes: text('notes'),
+    createdBy: integer('created_by').notNull().references(() => users.id),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [index('actions_district_status_idx').on(t.districtId, t.status)],
+);

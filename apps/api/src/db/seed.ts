@@ -67,7 +67,7 @@ const SYL_A = ['Khul', 'Lam', 'Wai', 'Nung', 'Sang', 'Thang', 'Mol', 'Kei', 'Hao
 const SYL_B = ['lok', 'pat', 'jang', 'khong', 'phai', 'bung', 'ching', 'mei', 'ram', 'tek', 'lou', 'nam'];
 
 // ---------- reset ----------
-const TABLES = ['sessions', 'anomaly_reviews', 'insights_cache', 'audit_log', 'disbursements', 'applications', 'beneficiaries', 'users', 'officers', 'schemes', 'blocks', 'districts', 'meta'];
+const TABLES = ['field_actions', 'sessions', 'anomaly_reviews', 'insights_cache', 'audit_log', 'disbursements', 'applications', 'beneficiaries', 'users', 'officers', 'schemes', 'blocks', 'districts', 'meta'];
 sqlite.pragma('foreign_keys = OFF');
 for (const t of TABLES) sqlite.prepare(`DELETE FROM ${t}`).run();
 sqlite.pragma('foreign_keys = ON');
@@ -351,6 +351,23 @@ sqlite.transaction(() => {
     }
   }
 })();
+
+// ---------- sample field actions ----------
+{
+  const uid = (email: string) => (sqlite.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: number }).id;
+  const STATE = uid('state@sevalens.demo');
+  const UKHRUL = uid('dist.ukhrul@sevalens.demo');
+  const UKL_HQ = blocksOut.find((b) => b.dcode === 'UKL')!;
+  const day = (offset: number) => new Date(Date.now() + offset * DAY).toISOString().slice(0, 10);
+  const now = new Date().toISOString();
+  const insAction = sqlite.prepare(`INSERT INTO field_actions (district_id, block_id, anomaly_id, title, assigned_to_user_id, due_date, status, notes, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+  sqlite.transaction(() => {
+    insAction.run(THOUBAL.districtId, THOUBAL.id, `dup:block:${THOUBAL.id}`, 'Verify suspected duplicate pension records in Thoubal block', STATE, day(7), 'open', 'Field check of matched Aadhaar-hash pairs before suspending payments.', STATE, now, now);
+    insAction.run(LAMSHANG.districtId, LAMSHANG.id, `backlog:block:${LAMSHANG.id}`, 'Clear field-verification backlog in Lamshang', STATE, day(-3), 'in_progress', 'Two additional verifiers deployed for 2 weeks.', STATE, now, now);
+    insAction.run(CHINGAI.districtId, CHINGAI.id, null, 'Run enrolment camp for old-age pension in Chingai', UKHRUL, day(14), 'open', null, STATE, now, now);
+    insAction.run(UKL_HQ.districtId, UKL_HQ.id, null, 'Reconcile returned payments with bank branch', UKHRUL, day(-10), 'done', 'Bank IFSC corrections submitted.', UKHRUL, now, now);
+  })();
+}
 
 // ---------- verification summary ----------
 const q = <T = Record<string, number>>(sql: string, ...p: unknown[]) => sqlite.prepare(sql).all(...p) as T[];

@@ -73,3 +73,31 @@ export const askIntentSchema = z.discriminatedUnion('intent', [
   }),
 ]);
 export type AskIntentParams = z.infer<typeof askIntentSchema>;
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
+
+export const actionCreateSchema = z.object({
+  districtId: z.number().int().positive(),
+  blockId: z.number().int().positive(),
+  anomalyId: z.string().min(3).max(80).regex(/^[a-z_]+(:[a-z_]+)*(:\d+)?$/).nullable().optional(),
+  title: z.string().trim().min(3).max(200),
+  assignedToUserId: z.number().int().positive(),
+  dueDate: isoDay,
+  notes: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const actionUpdateSchema = z
+  .object({
+    title: z.string().trim().min(3).max(200),
+    assignedToUserId: z.number().int().positive(),
+    dueDate: isoDay,
+    status: z.enum(['open', 'in_progress', 'done']),
+    notes: z.string().trim().max(1000).nullable(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, 'nothing to update');
+
+export const actionsQuerySchema = z.object({
+  districtId: z.coerce.number().int().positive().optional(),
+  status: z.enum(['open', 'in_progress', 'done']).optional(),
+});

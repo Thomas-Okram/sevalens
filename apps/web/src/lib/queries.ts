@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { AttentionFactorKey, SchemeInfo } from '@sevalens/shared';
+import type { ActionsResponse, AttentionFactorKey, SchemeInfo } from '@sevalens/shared';
 import { api } from './api';
 
 export interface Meta {
@@ -18,3 +18,6 @@ export interface Meta {
 }
 
 export const useMeta = () => useQuery({ queryKey: ['meta'], queryFn: () => api.get<Meta>('/meta'), staleTime: 5 * 60_000 });
+
+/** Field actions in the caller's scope (shared by the Actions page, overview tile and create modal). */
+export const useActions = () => useQuery({ queryKey: ['actions'], queryFn: () => api.get<ActionsResponse>('/actions') });

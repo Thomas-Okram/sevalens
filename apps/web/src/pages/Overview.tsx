@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Users, UserCheck, Target, Hourglass, TimerOff, ScanSearch, ChevronRight } from 'lucide-react';
+import { Users, UserCheck, Target, Hourglass, TimerOff, ScanSearch, ChevronRight, ClipboardList } from 'lucide-react';
 import type { Overview as OverviewT } from '@sevalens/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useActions } from '../lib/queries';
 import { fmtInt, fmtPct } from '../lib/format';
 import { Card, ErrorState, FactorBar, FactorLegend, InfoTip, KpiTile, PageHeader, ScorePill, Skeleton, cx } from '../components/ui';
 import { ManipurMap } from '../components/ManipurMap';
@@ -16,6 +17,7 @@ export function useOverview() {
 export default function Overview() {
   const { user } = useAuth();
   const q = useOverview();
+  const actions = useActions();
   const [level, setLevel] = useState<'district' | 'block'>('district');
   const navigate = useNavigate();
 
@@ -29,9 +31,9 @@ export default function Overview() {
     <div className="space-y-4">
       <PageHeader title="State overview" subtitle={`${scope} · 6 welfare schemes · coverage, pendency, anomalies and where to act first`} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {!k ? (
-          Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-[88px]" />)
+          Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className="h-[88px]" />)
         ) : (
           <>
             <KpiTile icon={<Users className="h-3.5 w-3.5" />} label="Est. eligible" value={fmtInt(k.eligible)} sub="across 6 schemes"
@@ -46,6 +48,8 @@ export default function Overview() {
               info="Open applications older than their scheme's processing SLA (30 days for pensions & maternity, 45 for scholarships) ÷ all open applications." />
             <KpiTile icon={<ScanSearch className="h-3.5 w-3.5" />} label="Anomalies" value={fmtInt(k.activeAnomalies)} tone={k.highAnomalies > 0 ? 'high' : k.activeAnomalies > 0 ? 'medium' : 'low'} sub={`${k.highAnomalies} high severity`}
               info="Anomalies not yet reviewed by an officer: duplicates, payments after death, robust-z spikes (|z| > 3.5), officer outliers and SLA backlogs." />
+            <KpiTile icon={<ClipboardList className="h-3.5 w-3.5" />} label="Open actions" value={actions.data ? fmtInt(actions.data.actions.filter((x) => x.status !== 'done').length) : '–'} tone={actions.data?.actions.some((x) => x.overdue) ? 'high' : undefined} sub={<Link to="/actions" className="hover:underline">{actions.data ? `${actions.data.actions.filter((x) => x.overdue).length} overdue` : 'loading…'}</Link>}
+              info="Field actions (open or in progress) raised from anomalies and officer briefs. Overdue = not done and past its due date." />
           </>
         )}
       </div>

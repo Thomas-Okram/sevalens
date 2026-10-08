@@ -330,3 +330,35 @@ export interface BeneficiaryView {
   deceasedAt: string | null;
   payments: { month: string; amount: number; status: string; paidAt: string }[];
 }
+
+// ---------- field actions ----------
+export type ActionStatus = 'open' | 'in_progress' | 'done';
+
+export interface FieldAction {
+  id: number;
+  districtId: number;
+  districtName: string;
+  blockId: number;
+  blockName: string;
+  /** Anomaly key the action was raised from, if any. */
+  anomalyId: string | null;
+  title: string;
+  assignedToUserId: number;
+  assignedToName: string;
+  dueDate: string; // YYYY-MM-DD
+  status: ActionStatus;
+  notes: string | null;
+  createdBy: number;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Not done and due date is before today. */
+  overdue: boolean;
+}
+
+export interface ActionsResponse {
+  actions: FieldAction[];
+  /** Users actions can be assigned to, within the caller's scope. */
+  assignees: { id: number; name: string; districtId: number | null }[];
+  today: string;
+}

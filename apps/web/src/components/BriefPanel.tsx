@@ -4,6 +4,8 @@ import type { Brief } from '@sevalens/shared';
 import { api } from '../lib/api';
 import { fmtDate } from '../lib/format';
 import { AiProvenance } from './AiProvenance';
+import { CreateActionButton } from './CreateActionButton';
+import { useMeta } from '../lib/queries';
 import { Button, Card, ErrorState } from './ui';
 
 export function BriefPanel({ districtId, districtName }: { districtId: number; districtName: string }) {
@@ -14,6 +16,7 @@ export function BriefPanel({ districtId, districtName }: { districtId: number; d
     onSuccess: (d) => qc.setQueryData(['brief', districtId], d),
   });
   const brief = cached.data?.brief ?? null;
+  const visitBlockId = useMeta().data?.blocks.find((b) => b.districtId === districtId && b.name === brief?.visitFirst.blockName)?.id;
 
   return (
     <Card
@@ -64,6 +67,7 @@ export function BriefPanel({ districtId, districtName }: { districtId: number; d
               <div className="mt-3 flex gap-2 rounded-lg bg-teal-50 px-3 py-2 ring-1 ring-teal-200">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" />
                 <div><span className="font-semibold text-teal-900">Visit first: {brief.visitFirst.blockName}</span> <span className="text-teal-900/80">— {brief.visitFirst.reason}</span></div>
+                <CreateActionButton className="ml-auto shrink-0 self-start print:hidden" districtId={districtId} blockId={visitBlockId} suggestedTitle={`Field visit: ${brief.visitFirst.blockName} — ${brief.visitFirst.reason}`} />
               </div>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { fmtDate, fmtINR, fmtMonth } from '../lib/format';
 import { AXIS, GRID, SEV_COLOR } from '../lib/theme';
 import { Button, Card, Empty, ErrorState, Loading, PageHeader, Select, SeverityBadge, Skeleton, cx } from '../components/ui';
 import { BeneficiaryModal } from '../components/BeneficiaryModal';
+import { CreateActionButton } from '../components/CreateActionButton';
 
 const TYPE_META: Record<AnomalyType, { label: string; icon: typeof Users; blurb: string }> = {
   duplicate_beneficiary: { label: 'Possible duplicates', icon: Users, blurb: 'Same person enrolled more than once' },
@@ -168,6 +169,7 @@ function AnomalyCard({ a, onOpen }: { a: Anomaly; onOpen: () => void }) {
       {a.amountAtRisk ? <div className="mt-1 text-xs font-medium text-red-800">{a.type === 'duplicate_beneficiary' ? 'Monthly payout to suspected duplicates' : 'Amount paid in error'}: {fmtINR(a.amountAtRisk)}</div> : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
         <ReviewControls a={a} />
+        <CreateActionButton districtId={a.districtId} blockId={a.blockId ?? undefined} anomalyId={a.key} suggestedTitle={`Field check: ${a.typeLabel} — ${a.entityLabel}`} />
         <Button variant="ghost" className="!py-1 text-xs text-teal-700" onClick={onOpen}><TableProperties className="h-3.5 w-3.5" /> View records</Button>
       </div>
     </article>
