@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Brief } from '@sevalens/shared';
 import { sqlite } from '../db/client';
+import { HttpError } from '../lib/http';
 import { summarizePendency } from '../analytics';
 import type { Snapshot } from '../services/snapshot';
 import { aiEnabled, aiModel, callJson, LlmUnavailable } from './llm';
@@ -12,7 +13,7 @@ const int = (n: number) => Math.round(n).toLocaleString('en-IN');
 /** Aggregated, de-identified facts about a district — the ONLY input to the brief. */
 export function briefFacts(s: Snapshot, districtId: number) {
   const d = s.districtSummaries.find((x) => x.id === districtId);
-  if (!d) throw new Error('district not found');
+  if (!d) throw new HttpError(404, 'District not found.');
   const blocks = s.blockSummaries.filter((b) => b.districtId === districtId).sort((a, b) => b.attention.score - a.attention.score);
   const pend = summarizePendency(s.apps.filter((a) => a.districtId === districtId), s.asOf);
   const anomalies = s.anomalies.filter((a) => a.districtId === districtId && a.review.status !== 'false_positive');

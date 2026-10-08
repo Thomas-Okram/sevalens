@@ -26,6 +26,7 @@ import { audit } from '../lib/audit';
 import { h, HttpError, parse } from '../lib/http';
 import { maskAadhaar, maskName } from '../lib/mask';
 import { aiEnabled, aiModel } from '../ai/llm';
+import { scrub } from '../ai/sanitize';
 
 export const analyticsRouter = Router();
 
@@ -202,7 +203,8 @@ analyticsRouter.get('/pendency/export.csv', h((req, res) => {
   const { items } = pendingItems(req, s, query);
   audit(req, 'export.pendency_csv', 'applications', null, { rows: items.length, filters: query });
   const cols: (keyof PendingApplication)[] = ['refNo', 'applicantMasked', 'schemeCode', 'districtName', 'blockName', 'submittedAt', 'ageDays', 'slaDays', 'breached', 'stageLabel'];
-  const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
+  // quote every cell; prefix text starting with = + - @ so spreadsheets don't evaluate it as a formula
+  const esc = (v: unknown) => `"${(typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v)).replace(/"/g, '""')}"`;
   const csv = [cols.join(','), ...items.map((it) => cols.map((c) => esc(it[c])).join(','))].join('\n');
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="sevalens-pending-${s.asOf}.csv"`);
@@ -303,7 +305,7 @@ analyticsRouter.post('/anomalies/:key/review', h((req, res) => {
   sqlite.prepare(`INSERT INTO anomaly_reviews (anomaly_key, status, note, user_id, user_email, updated_at) VALUES (?,?,?,?,?,?)
     ON CONFLICT(anomaly_key) DO UPDATE SET status = excluded.status, note = excluded.note, user_id = excluded.user_id, user_email = excluded.user_email, updated_at = excluded.updated_at`)
     .run(key, body.status, body.note ?? null, u.id, u.email, now);
-  audit(req, 'anomaly.review', 'anomaly', key, { status: body.status, note: body.note ?? null });
+  audit(req, 'anomaly.review', 'anomaly', key, { status: body.status, note: body.note ? scrub(body.note) : null });
   invalidateReviews();
   res.json({ ok: true, review: { status: body.status, note: body.note ?? null, by: u.email, at: now } });
 }));

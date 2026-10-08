@@ -4,9 +4,9 @@ import { askSchema, briefSchema, idParamSchema } from '@sevalens/shared';
 import { getSnapshot } from '../services/snapshot';
 import { assertInScope, districtScope } from '../middleware/auth';
 import { audit } from '../lib/audit';
-import { h, parse } from '../lib/http';
+import { h, HttpError, parse } from '../lib/http';
 import { briefFacts, cachedBrief, generateBrief } from '../ai/brief';
-import { toLLMPayload } from '../ai/sanitize';
+import { scrub, toLLMPayload } from '../ai/sanitize';
 import { aiEnabled, aiModel } from '../ai/llm';
 import { ask } from '../ai/ask';
 
@@ -17,6 +17,7 @@ aiRouter.use(rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: 'draft-7'
 aiRouter.get('/brief/:id', h((req, res) => {
   const { id } = parse(idParamSchema, req.params);
   assertInScope(req, id);
+  if (!getSnapshot().districts.some((d) => d.id === id)) throw new HttpError(404, 'District not found.');
   res.json({ brief: cachedBrief(getSnapshot(), id) });
 }));
 
@@ -32,7 +33,7 @@ aiRouter.post('/brief/:id', h(async (req, res) => {
 aiRouter.post('/ask', h(async (req, res) => {
   const { question } = parse(askSchema, req.body);
   const result = await ask(getSnapshot(), question, districtScope(req));
-  audit(req, 'ai.ask', 'query', result.intent, { question, intent: result.intent, filters: result.filters, source: result.source });
+  audit(req, 'ai.ask', 'query', result.intent, { question: scrub(question), intent: result.intent, filters: result.filters, source: result.source });
   res.json(result);
 }));
 

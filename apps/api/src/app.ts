@@ -12,7 +12,11 @@ import { forecastRouter } from './routes/forecast';
 import { ingestRouter } from './routes/ingest';
 import { requireAuth, requireRole } from './middleware/auth';
 import { errorHandler } from './lib/http';
-import { SqliteSessionStore } from './lib/sessionStore';
+import { SESSION_COOKIE, SqliteSessionStore } from './lib/sessionStore';
+
+const DEMO_SECRET = 'sevalens-demo-secret-change-me';
+/** Secrets that appear in this repo (.env.example, the demo default) and so are public. */
+const PUBLISHED_SECRETS = [DEMO_SECRET, 'change-me-in-production'];
 
 export function createApp() {
   const app = express();
@@ -35,12 +39,14 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
 
   const secret = process.env.SESSION_SECRET;
-  if (!secret) console.warn('[api] SESSION_SECRET not set — using an insecure demo default');
+  const weak = !secret || PUBLISHED_SECRETS.includes(secret) || secret.length < 16;
+  if (weak && process.env.NODE_ENV === 'production') throw new Error('SESSION_SECRET must be set to a private value of 16+ characters in production.');
+  if (weak) console.warn('[api] SESSION_SECRET not set or weak — using an insecure demo default');
   app.use(
     session({
-      name: 'sevalens.sid',
+      name: SESSION_COOKIE,
       store: new SqliteSessionStore(),
-      secret: secret || 'sevalens-demo-secret-change-me',
+      secret: secret || DEMO_SECRET,
       resave: false,
       saveUninitialized: false,
       cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE === 'true', maxAge: 8 * 3600_000 },

@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { Button, Card, Empty, ErrorState, Loading, PageHeader, Select } from '../components/ui';
 
 const ACTION_LABEL: Record<string, string> = {
-  'auth.login': 'Signed in', 'auth.logout': 'Signed out', 'auth.login_failed': 'Failed sign-in',
+  'auth.login': 'Signed in', 'auth.logout': 'Signed out', 'auth.login_failed': 'Failed sign-in', 'access.denied': 'Access denied',
   'beneficiary.view': 'Viewed beneficiary record', 'ai.brief_generated': 'Generated officer brief', 'ai.ask': 'Asked SevaLens',
   'export.pendency_csv': 'Exported pendency CSV', 'anomaly.review': 'Reviewed anomaly',
 };

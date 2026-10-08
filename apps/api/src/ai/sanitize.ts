@@ -28,7 +28,8 @@ const AADHAAR_LIKE = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g;
 const FULL_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
 const REF_NO = /\bSW\/[A-Z]+\/\d{4}\/\d+\b/g;
 
-function scrub(s: string): string {
+/** Redact identifier-like substrings (Aadhaar-like numbers, full dates, application refs). */
+export function scrub(s: string): string {
   return s.replace(AADHAAR_LIKE, '[redacted-id]').replace(FULL_DATE, '[redacted-date]').replace(REF_NO, '[redacted-ref]').slice(0, 600);
 }
 

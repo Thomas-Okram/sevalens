@@ -1,6 +1,8 @@
 import session from 'express-session';
 import { sqlite } from '../db/client';
 
+export const SESSION_COOKIE = 'sevalens.sid';
+
 /**
  * Minimal SQLite-backed session store so sessions survive API restarts
  * (MemoryStore loses them and is not meant for production).

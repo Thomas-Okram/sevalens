@@ -103,7 +103,9 @@ packages/shared  Shared TS types + zod schemas (API contract)
 - **RBAC enforced on the server** for every endpoint: district officers are pinned to their district; out-of-scope requests return 403 (also for AI queries and briefs).
 - Aadhaar stored only as last-4 + salted SHA-256 hash; names masked in all list views; full record only in an audited detail view.
 - `audit_log` records sign-ins (and failures), beneficiary views, brief generation, Ask queries, CSV exports and anomaly reviews; state admins see it on the Audit page.
-- helmet (CSP), rate limits on `/api/auth` and `/api/ai`, zod validation on every input, generic error messages (no stack traces to the client), React error boundaries per page.
+- helmet (CSP), rate limits on `/api/auth` (failed attempts only) and `/api/ai`, zod validation on every input, generic error messages (no stack traces to the client, request bodies never logged), React error boundaries per page.
+- Denied cross-district requests are audited as `access.denied`; identifiers typed into Ask questions or review notes are scrubbed before they reach the audit log.
+- **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** describes the review: the RBAC test matrix (the district officer tried every endpoint and every Ask intent against other districts), 9 findings and their fixes. Each fix has a regression test in `apps/api/src/security.test.ts`.
 
 ---
 
@@ -136,7 +138,9 @@ packages/shared  Shared TS types + zod schemas (API contract)
 | `npm run setup` | `npm install` → `db:migrate` → `db:seed` |
 | `npm run dev` | API (tsx watch) + web (Vite) via concurrently |
 | `npm start` | Build web, serve everything from the API on :4000 |
-| `npm test` | vitest (analytics + AI sanitiser) |
+| `npm test` | vitest (analytics, AI sanitiser, API security regression suite) |
+| `npm run cache:warm` | Pre-generate every district's officer brief into `insights_cache` (run after `db:seed`, on good Wi-Fi with the API key set) |
+| `npm run preflight` | Demo-morning checklist (✅/⚠️/❌): Node, DB seed counts, all 6 planted patterns, port free, web build, API key + 1-token AI ping (warn only), brief cache warm, full test suite. Exits non-zero on any hard failure |
 | `npm run typecheck` | `tsc` across all workspaces |
 | `npm run db:seed` | Re-generate the synthetic dataset (deterministic; prints a verification summary of every planted pattern) |
 
