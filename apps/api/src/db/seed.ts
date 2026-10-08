@@ -132,6 +132,7 @@ const blockByName = (dcode: string, name: string) => blocksOut.find((b) => b.dco
 const LAMSHANG = blockByName('IW', 'Lamshang');
 const THOUBAL = blockByName('TBL', 'Thoubal');
 const MOIRANG = blockByName('BPR', 'Moirang');
+const CHINGAI = blockByName('UKL', 'Chingai');
 const CCP_ID = districtByCode.get('CCP')!;
 OUTLIER_OFFICER = officersByBlock.get(MOIRANG.id)![0];
 
@@ -260,8 +261,8 @@ let appId = 1;
 let lamshangStuck = 0;
 let outlierDecisions = 0;
 sqlite.transaction(() => {
-  const addApp = (blk: Blk, submittedMs: number, forceStuck = false) => {
-    const si = pickScheme();
+  const addApp = (blk: Blk, submittedMs: number, forceStuck = false, schemeOverride?: number, stuckStage = 'field_verification') => {
+    const si = schemeOverride ?? pickScheme();
     const s = SCHEMES[si];
     const offs = officersByBlock.get(blk.id)!;
     const isOutlierBlock = blk.id === MOIRANG.id;
@@ -282,9 +283,9 @@ sqlite.transaction(() => {
       decidedAt = isoDT(submittedMs + decisionDays * DAY);
       if (outlier) outlierDecisions++;
     } else if (stuck) {
-      status = 'pending';
-      stage = 'field_verification';
-      lamshangStuck++;
+      status = stuckStage === 'sanction' ? 'verified' : 'pending';
+      stage = stuckStage;
+      if (blk.id === LAMSHANG.id) lamshangStuck++;
     } else {
       const frac = ageDays / Math.max(decisionDays, 1);
       if (ageDays < 5 || frac < 0.25) { status = 'submitted'; stage = 'document_check'; }
@@ -305,6 +306,8 @@ sqlite.transaction(() => {
   }
   // Pattern 2: surge of applications in Lamshang over the last 90 days, stuck at field verification
   for (let k = 0; k < 330; k++) addApp(LAMSHANG, asOfMs - rnd() * 90 * DAY, true);
+  // Minor pattern for the district-officer demo: widow-pension cases waiting at sanction in Ukhrul / Chingai
+  for (let k = 0; k < 26; k++) addApp(CHINGAI, asOfMs - (10 + rnd() * 70) * DAY, true, schemeIdx('IGNWPS'), 'sanction');
   // Pattern 6 support: make sure the outlier officer has plenty of decisions
   for (let k = 0; k < 140; k++) addApp(MOIRANG, asOfMs - (30 + rnd() * (WINDOW_DAYS - 30)) * DAY);
 })();
