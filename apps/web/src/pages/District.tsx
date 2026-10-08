@@ -11,6 +11,7 @@ import { AXIS, FACTOR_COLOR, GRID, SERIES, SEV_COLOR } from '../lib/theme';
 import { Card, Empty, ErrorState, FactorBar, KpiTile, Loading, PageHeader, ScorePill, Select, SeverityBadge, Skeleton, cx } from '../components/ui';
 import { CoverageMini, useOverview } from './Overview';
 import { BriefPanel } from '../components/BriefPanel';
+import { ForecastCard } from '../components/ForecastCard';
 
 const BUCKET_COLORS = ['#86b6ef', '#2a78d6', '#fab219', '#d03b3b'];
 
@@ -104,6 +105,8 @@ export default function District() {
           </div>
 
           <BriefPanel districtId={dist.id} districtName={dist.name} />
+
+          <ForecastCard districtId={dist.id} />
 
           <Card title="Blocks" subtitle="Ranked by Attention Score — hover the bar for the breakdown" bodyClass="p-0" info="Block figures use the block's share of district population for eligibility estimates.">
             <div className="overflow-x-auto">

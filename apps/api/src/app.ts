@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth';
 import { analyticsRouter } from './routes/analytics';
 import { aiRouter } from './routes/ai';
 import { actionsRouter } from './routes/actions';
+import { forecastRouter } from './routes/forecast';
 import { requireAuth } from './middleware/auth';
 import { errorHandler } from './lib/http';
 import { SqliteSessionStore } from './lib/sessionStore';
@@ -50,6 +51,7 @@ export function createApp() {
   app.use('/api/ai', requireAuth, aiRouter);
   app.use('/api/actions', requireAuth, actionsRouter);
   app.use('/api', requireAuth, analyticsRouter);
+  app.use('/api', requireAuth, forecastRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
   // Serve the built web app if present (single-process demo mode: `npm run build && npm start`)
