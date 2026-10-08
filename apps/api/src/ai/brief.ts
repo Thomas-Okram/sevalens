@@ -91,30 +91,43 @@ export function templateBrief(f: BriefFacts): Omit<Brief, 'districtId' | 'source
   };
 }
 
+export const BRIEF_MAX_WORDS = 250;
+const countWords = (t: string) => t.split(/\s+/).filter(Boolean).length;
+/** Words a reader sees in the brief body (Situation / Top issues / Actions / Visit first). */
+export const briefWords = (b: Pick<Brief, 'situation' | 'topIssues' | 'actions' | 'visitFirst'>) =>
+  countWords([b.situation, ...b.topIssues.flatMap((t) => [t.title, t.detail]), ...b.actions, b.visitFirst.blockName, b.visitFirst.reason].join(' '));
+
 const briefOutSchema = z.object({
-  situation: z.string().min(10).max(900),
-  topIssues: z.array(z.object({ title: z.string().max(160), detail: z.string().max(600) })).min(1).max(3),
-  actions: z.array(z.string().max(400)).min(1).max(5),
-  visitFirst: z.object({ blockName: z.string().max(80), reason: z.string().max(400) }),
+  situation: z.string().min(10).max(600),
+  topIssues: z.array(z.object({ title: z.string().max(120), detail: z.string().max(400) })).min(1).max(3),
+  actions: z.array(z.string().max(300)).min(1).max(3),
+  visitFirst: z.object({ blockName: z.string().max(80), reason: z.string().max(300) }),
 });
+// Property order here is the order the model writes (and the UI shows) the sections.
 const briefJsonSchema = {
   type: 'object',
   additionalProperties: false,
   required: ['situation', 'topIssues', 'actions', 'visitFirst'],
   properties: {
-    situation: { type: 'string', description: '2–3 sentence situation summary with the key numbers.' },
-    topIssues: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['title', 'detail'], properties: { title: { type: 'string' }, detail: { type: 'string' } } } },
-    actions: { type: 'array', items: { type: 'string' } },
-    visitFirst: { type: 'object', additionalProperties: false, required: ['blockName', 'reason'], properties: { blockName: { type: 'string' }, reason: { type: 'string' } } },
+    situation: { type: 'string', description: 'Situation: 2 sentences, at most 45 words, with the key numbers.' },
+    topIssues: {
+      type: 'array',
+      description: 'Top 3 issues, most urgent first.',
+      items: { type: 'object', additionalProperties: false, required: ['title', 'detail'], properties: { title: { type: 'string', description: 'At most 10 words.' }, detail: { type: 'string', description: 'One sentence, at most 30 words.' } } },
+    },
+    actions: { type: 'array', description: 'Exactly 3 actions, each one sentence of at most 25 words.', items: { type: 'string' } },
+    visitFirst: { type: 'object', additionalProperties: false, required: ['blockName', 'reason'], properties: { blockName: { type: 'string', description: 'Exactly one block name from the data.' }, reason: { type: 'string', description: 'One sentence, at most 25 words.' } } },
   },
 };
 
-const SYSTEM = `You are an analyst supporting the Social Welfare Department, Government of Manipur. You write a one-page action note for a district officer from aggregated, de-identified statistics.
+const SYSTEM = `You are an analyst supporting the Social Welfare Department, Government of Manipur. You write a short action note for a district officer from aggregated, de-identified statistics.
+Output four sections in this order: situation, topIssues, actions, visitFirst. The whole note must be under ${BRIEF_MAX_WORDS - 30} words; be terse, no filler, no repetition between sections.
 Rules:
-- Use only the numbers provided; do not invent figures. Quote key numbers.
-- Exactly 3 top issues (fewer only if the data shows fewer), most urgent first.
-- 3–5 concrete, practical recommended actions an Indian district administration can take (e.g. enrolment camps via Anganwadi/ASHA networks, special verification drives, PFMS/bank reconciliation, death-registry linkage, sample audits).
-- visitFirst.blockName must be one of the block names provided.
+- situation: 2 sentences, at most 45 words: attention score and level, coverage, open and overdue applications.
+- topIssues: exactly 3 (fewer only if the data shows fewer), most urgent first. Title at most 10 words; detail one sentence of at most 30 words quoting the key number.
+- actions: exactly 3, each one sentence of at most 25 words. Concrete steps an Indian district administration can take (e.g. enrolment camps via Anganwadi/ASHA networks, special verification drives, PFMS/bank reconciliation, death-registry linkage, sample audits).
+- visitFirst: blockName must be copied exactly from the block names provided (normally the highest-scoring block); reason is one sentence of at most 25 words.
+- Use only the numbers provided; do not invent figures. Write percentages like 18.4% (the data gives fractions, e.g. 0.184).
 - Neutral, factual language. Describe areas only by geography or terrain/remoteness. Never speculate about communities, ethnicity, religion or politics.
 - Statistical flags (e.g. officer outliers) are prompts for review, not findings of wrongdoing; say so.`;
 
@@ -132,6 +145,7 @@ export async function generateBrief(s: Snapshot, districtId: number, refresh: bo
   try {
     const payload = toLLMPayload(facts);
     const out = await callJson({ system: SYSTEM, user: `District statistics (JSON):\n${JSON.stringify(payload)}`, jsonSchema: briefJsonSchema, schema: briefOutSchema });
+    if (briefWords(out) > BRIEF_MAX_WORDS) throw new LlmUnavailable(`AI brief exceeded ${BRIEF_MAX_WORDS} words`);
     const validBlock = facts.blocks.some((b) => b.block === out.visitFirst.blockName);
     brief = { ...base, ...out, visitFirst: validBlock ? out.visitFirst : base.visitFirst, districtId, source: 'llm', model: aiModel(), generatedAt: new Date().toISOString() };
   } catch (e) {
