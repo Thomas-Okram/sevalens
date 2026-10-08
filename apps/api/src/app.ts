@@ -21,7 +21,9 @@ const PUBLISHED_SECRETS = [DEMO_SECRET, 'change-me-in-production'];
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 'loopback');
+  // Behind a hosting proxy (Railway, Render…) set TRUST_PROXY=1 so req.secure, secure cookies
+  // and rate-limit client IPs work. Locally we only trust loopback.
+  app.set('trust proxy', process.env.TRUST_PROXY ? Number(process.env.TRUST_PROXY) : 'loopback');
   app.use(
     helmet({
       contentSecurityPolicy: {
