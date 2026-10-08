@@ -1,7 +1,9 @@
 # SevaLens — 4-minute demo script
 
 **Before going on stage**
-- `npm run db:seed` (resets data, reviews and audit log to a clean state), then `npm run dev` (or `npm start` for single-process mode).
+- **The night before, on good Wi-Fi:** `npm run db:seed && npm run build && npm run cache:warm` (with `ANTHROPIC_API_KEY` set, so the cached briefs are AI-generated and no brief has to be generated live on venue Wi-Fi).
+- **At the venue:** `npm run preflight` and confirm it prints ✅ READY. Warnings about the AI key or ping are fine: the app falls back to its offline mode. Then `npm start` (single process on :4000) or `npm run dev`.
+- Only re-run `npm run db:seed` if rehearsal changed the data. It also clears the brief cache, so run `npm run cache:warm` again afterwards.
 - Browser at **1366×768**, zoom 100%, at http://localhost:5173. Close other tabs.
 - No internet? Everything still works. The map shows the offline outline and the AI features use their rule-based fallbacks (label: "Template (offline)" / "Keyword matcher (offline)").
 - Numbers below are from the deterministic seed (data as of **8 Oct 2026**).
@@ -62,4 +64,4 @@ Click **Data & privacy**, then scroll to *What is sent to the AI*.
 ### Recovery tips
 - **Page shows an error card:** click **Retry**. Only that page is affected.
 - **Logged out after a restart:** sessions persist in SQLite, so this only happens after `db:seed`. Sign in again.
-- **Data looks changed after rehearsal:** `npm run db:seed` resets everything in about 3 seconds.
+- **Data looks changed after rehearsal:** `npm run db:seed` resets everything in about 3 seconds. Then run `npm run cache:warm` and `npm run preflight`.

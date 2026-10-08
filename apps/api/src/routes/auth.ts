@@ -5,13 +5,14 @@ import { loginSchema, type SessionUser } from '@sevalens/shared';
 import { sqlite } from '../db/client';
 import { audit } from '../lib/audit';
 import { h, HttpError, parse } from '../lib/http';
+import { SESSION_COOKIE } from '../lib/sessionStore';
 
 export const authRouter = Router();
 
 // compared against when the email is unknown, so response time does not reveal valid accounts
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Too many sign-in attempts. Try again later.' } });
+const loginLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, skipSuccessfulRequests: true, message: { error: 'Too many sign-in attempts. Try again later.' } });
 
 authRouter.post(
   '/login',
@@ -36,7 +37,7 @@ authRouter.post(
 
 authRouter.post('/logout', (req, res) => {
   if (req.session.user) audit(req, 'auth.logout', 'user', req.session.user.id);
-  req.session.destroy(() => res.json({ ok: true }));
+  req.session.destroy(() => res.clearCookie(SESSION_COOKIE, { path: '/', httpOnly: true, sameSite: 'lax' }).json({ ok: true }));
 });
 
 authRouter.get('/me', (req, res) => {

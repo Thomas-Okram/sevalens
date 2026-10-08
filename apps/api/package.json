@@ -10,7 +10,9 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "preflight": "tsx src/scripts/preflight.ts",
+    "cache:warm": "tsx src/scripts/warm.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",

@@ -17,6 +17,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { sqlite } from './client';
 import { DISTRICTS, SCHEMES, LOW_COVERAGE } from './reference';
+import { EXPECTED_COUNTS, plantedPatternChecks, tableCounts } from './seedChecks';
 
 const SEED = 20261009;
 const AS_OF = process.env.SEED_AS_OF ?? '2026-10-08';
@@ -353,43 +354,13 @@ sqlite.transaction(() => {
 })();
 
 // ---------- verification summary ----------
-const q = <T = Record<string, number>>(sql: string, ...p: unknown[]) => sqlite.prepare(sql).all(...p) as T[];
-const one = <T = Record<string, number>>(sql: string, ...p: unknown[]) => sqlite.prepare(sql).get(...p) as T;
-
 console.log(`\n=== SevaLens seed summary (as of ${AS_OF}, seed ${SEED}) — SYNTHETIC DATA ===`);
-console.log(`districts=${DISTRICTS.length} blocks=${blocksOut.length} beneficiaries=${bens.length} applications=${appId - 1} disbursements=${disCount}`);
-
-const cov = q<{ code: string; name: string; enrolled: number; eligible: number }>(`
-  SELECT d.code, d.name,
-    (SELECT COUNT(*) FROM beneficiaries b WHERE b.district_id = d.id AND b.status = 'active') AS enrolled,
-    (SELECT SUM(d.population * CASE s.eligible_basis WHEN 'population' THEN 1 WHEN 'pct_elderly' THEN d.pct_elderly WHEN 'pct_widows' THEN d.pct_widows ELSE d.pct_pwd END * s.eligible_factor) FROM schemes s) AS eligible
-  FROM districts d`);
-const totEnr = cov.reduce((a, c) => a + c.enrolled, 0);
-const totElig = cov.reduce((a, c) => a + c.eligible, 0);
-console.log(`\n[1] Coverage: state ${(100 * totEnr / totElig).toFixed(1)}% (${totEnr} / ${Math.round(totElig)} est. eligible)`);
-for (const c of [...cov].sort((a, b) => a.enrolled / a.eligible - b.enrolled / b.eligible).slice(0, 5))
-  console.log(`    ${c.name.padEnd(14)} ${(100 * c.enrolled / c.eligible).toFixed(1)}%`);
-
-const lam = one(`SELECT COUNT(*) AS n FROM applications WHERE block_id = ? AND status IN ('submitted','verified','pending') AND pending_stage = 'field_verification' AND julianday(?) - julianday(submitted_at) > 30`, LAMSHANG.id, AS_OF);
-const otherAvg = one(`SELECT AVG(n) AS n FROM (SELECT COUNT(*) AS n FROM applications WHERE block_id != ? AND status IN ('submitted','verified','pending') AND pending_stage = 'field_verification' AND julianday(?) - julianday(submitted_at) > 30 GROUP BY block_id)`, LAMSHANG.id, AS_OF);
-console.log(`\n[2] Pendency: Lamshang (Imphal West) ${lamshangStuck} stuck at field verification; ${lam.n} past 30-day SLA (other blocks avg ${otherAvg.n.toFixed(1)})`);
-
-const dupHash = q<{ block: string; n: number }>(`SELECT bl.name AS block, COUNT(*) AS n FROM (SELECT aadhaar_hash, MIN(block_id) AS block_id FROM beneficiaries GROUP BY aadhaar_hash HAVING COUNT(*) > 1) x JOIN blocks bl ON bl.id = x.block_id GROUP BY bl.name ORDER BY n DESC`);
-console.log(`\n[3] Duplicates: planted ${plantedExact} exact-hash + ${plantedFuzzy} fuzzy pairs in Thoubal block; hash groups by block: ${dupHash.map((d) => `${d.block}=${d.n}`).join(', ')}`);
-
-const ccp = one(`SELECT
-  AVG(CASE WHEN month IN (${[...LAST2].map(() => '?').join(',')}) THEN (status = 'failed') END) AS recent,
-  AVG(CASE WHEN month NOT IN (${[...LAST2].map(() => '?').join(',')}) THEN (status = 'failed') END) AS prior
-  FROM disbursements WHERE district_id = ?`, ...LAST2, ...LAST2, CCP_ID);
-console.log(`\n[4] Churachandpur failed-payment rate: last 2 months ${(100 * ccp.recent).toFixed(1)}% vs prior ${(100 * ccp.prior).toFixed(1)}%`);
-
-const dead = one(`SELECT COUNT(DISTINCT b.id) AS n, COUNT(*) AS payments, SUM(d.amount) AS amt FROM beneficiaries b JOIN disbursements d ON d.beneficiary_id = b.id WHERE b.status = 'deceased' AND d.status = 'success' AND d.paid_at > b.deceased_at`);
-console.log(`\n[5] Deceased-but-paid: ${dead.n} beneficiaries, ${dead.payments} payments, INR ${dead.amt}`);
-
-const offs = q<{ id: number; n: number; rate: number; avgDays: number }>(`SELECT officer_id AS id, COUNT(*) AS n, AVG(status = 'approved') AS rate, AVG(julianday(decided_at) - julianday(submitted_at)) AS avgDays FROM applications WHERE decided_at IS NOT NULL GROUP BY officer_id`);
-const out = offs.find((o) => o.id === OUTLIER_OFFICER)!;
-const peers = offs.filter((o) => o.id !== OUTLIER_OFFICER);
-console.log(`\n[6] Officer outlier #${OUTLIER_OFFICER}: ${out.n} decisions, approval ${(100 * out.rate).toFixed(1)}%, avg ${out.avgDays.toFixed(2)} days; peers avg approval ${(100 * peers.reduce((a, o) => a + o.rate, 0) / peers.length).toFixed(1)}%, avg ${(peers.reduce((a, o) => a + o.avgDays, 0) / peers.length).toFixed(1)} days`);
+const counts = tableCounts(sqlite);
+console.log(Object.entries(counts).map(([t, n]) => `${t}=${n}`).join(' '));
+const countDrift = (Object.keys(EXPECTED_COUNTS) as (keyof typeof EXPECTED_COUNTS)[]).filter((t) => counts[t] !== EXPECTED_COUNTS[t]);
+if (countDrift.length) console.warn(`!! counts differ from EXPECTED_COUNTS in seedChecks.ts (${countDrift.join(', ')}) — update it if the generator changed on purpose`);
+console.log(`generator: ${plantedExact} exact-hash + ${plantedFuzzy} fuzzy duplicate pairs in Thoubal; ${lamshangStuck} Lamshang apps stuck at field verification; outlier officer #${OUTLIER_OFFICER}`);
+for (const c of plantedPatternChecks(sqlite)) console.log(`\n[${c.id}] ${c.ok ? 'OK ' : 'FAIL'} ${c.label}: ${c.detail}`);
 void outlierDecisions;
 
 console.log(`\nSeed completed in ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);

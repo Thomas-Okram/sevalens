@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Role, SessionUser } from '@sevalens/shared';
 import { HttpError } from '../lib/http';
+import { audit } from '../lib/audit';
 
 declare module 'express-session' {
   interface SessionData {
@@ -15,7 +16,10 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
 
 export const requireRole = (...roles: Role[]) => (req: Request, _res: Response, next: NextFunction) => {
   const u = req.session.user;
-  if (!u || !roles.includes(u.role)) return next(new HttpError(403, 'You do not have access to this resource.'));
+  if (!u || !roles.includes(u.role)) {
+    audit(req, 'access.denied', 'route', null, { path: req.originalUrl, requiredRole: roles });
+    return next(new HttpError(403, 'You do not have access to this resource.'));
+  }
   next();
 };
 
@@ -36,14 +40,19 @@ export function inScope(req: Request, districtId: number): boolean {
   return s === null || s === districtId;
 }
 
+function denyDistrict(req: Request, districtId: number): never {
+  audit(req, 'access.denied', 'district', districtId, { path: req.originalUrl, districtId });
+  throw new HttpError(403, 'This district is outside your jurisdiction.');
+}
+
 export function assertInScope(req: Request, districtId: number) {
-  if (!inScope(req, districtId)) throw new HttpError(403, 'This district is outside your jurisdiction.');
+  if (!inScope(req, districtId)) denyDistrict(req, districtId);
 }
 
 /** Resolve the effective district filter: officers are pinned to their district. */
 export function effectiveDistrict(req: Request, requested?: number): number | undefined {
   const s = districtScope(req);
   if (s === null) return requested;
-  if (requested !== undefined && requested !== s) throw new HttpError(403, 'This district is outside your jurisdiction.');
+  if (requested !== undefined && requested !== s) denyDistrict(req, requested);
   return s;
 }
