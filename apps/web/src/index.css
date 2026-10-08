@@ -12,3 +12,7 @@
 
 html, body, #root { height: 100%; }
 body { @apply bg-slate-100 text-slate-800 antialiased; font-size: 14px; }
+
+/* muted basemap so data marks carry the colour */
+.sevalens-tiles { filter: grayscale(1) contrast(0.9) brightness(1.06); }
+.leaflet-container { font-family: inherit; }

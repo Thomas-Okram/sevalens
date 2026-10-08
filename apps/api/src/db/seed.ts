@@ -67,7 +67,7 @@ const SYL_A = ['Khul', 'Lam', 'Wai', 'Nung', 'Sang', 'Thang', 'Mol', 'Kei', 'Hao
 const SYL_B = ['lok', 'pat', 'jang', 'khong', 'phai', 'bung', 'ching', 'mei', 'ram', 'tek', 'lou', 'nam'];
 
 // ---------- reset ----------
-const TABLES = ['anomaly_reviews', 'insights_cache', 'audit_log', 'disbursements', 'applications', 'beneficiaries', 'users', 'officers', 'schemes', 'blocks', 'districts', 'meta'];
+const TABLES = ['sessions', 'anomaly_reviews', 'insights_cache', 'audit_log', 'disbursements', 'applications', 'beneficiaries', 'users', 'officers', 'schemes', 'blocks', 'districts', 'meta'];
 sqlite.pragma('foreign_keys = OFF');
 for (const t of TABLES) sqlite.prepare(`DELETE FROM ${t}`).run();
 sqlite.pragma('foreign_keys = ON');

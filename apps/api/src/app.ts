@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth';
 import { analyticsRouter } from './routes/analytics';
 import { requireAuth } from './middleware/auth';
 import { errorHandler } from './lib/http';
+import { SqliteSessionStore } from './lib/sessionStore';
 
 export function createApp() {
   const app = express();
@@ -18,7 +19,7 @@ export function createApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'https://*.tile.openstreetmap.org', 'https://*.basemaps.cartocdn.com'],
+          imgSrc: ["'self'", 'data:', 'https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           connectSrc: ["'self'"],
         },
@@ -32,6 +33,7 @@ export function createApp() {
   app.use(
     session({
       name: 'sevalens.sid',
+      store: new SqliteSessionStore(),
       secret: secret || 'sevalens-demo-secret-change-me',
       resave: false,
       saveUninitialized: false,

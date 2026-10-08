@@ -182,3 +182,10 @@ export const anomalyReviews = sqliteTable('anomaly_reviews', {
   userEmail: text('user_email'),
   updatedAt: text('updated_at').notNull(),
 });
+
+/** express-session storage (see lib/sessionStore.ts). */
+export const sessions = sqliteTable('sessions', {
+  sid: text('sid').primaryKey(),
+  data: text('data').notNull(),
+  expires: integer('expires').notNull(),
+});

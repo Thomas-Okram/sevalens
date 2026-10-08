@@ -99,8 +99,11 @@ export function duplicateAnomaly(place: Place, pairs: DuplicatePair[], monthlyAt
     entityLabel: `${place.blockName}, ${place.districtName}`,
     metric: 'Suspected duplicate record pairs',
     expected: `≈${expectedPairs} (background rate)`,
-    observed: `${pairs.length} pairs (${exact} same Aadhaar, ${fuzzy} near-identical name + DOB)`,
-    reason: `${pairs.length} pairs of beneficiary records in ${place.blockName} look like the same person enrolled more than once — ${exact} share the same Aadhaar (hashed) and ${fuzzy} have near-identical names with the same date of birth. Many are enrolled in pension schemes that should not overlap.`,
+    observed: `${pairs.length} ${pairs.length === 1 ? 'pair' : 'pairs'} (${exact} same Aadhaar, ${fuzzy} near-identical name + DOB)`,
+    reason:
+      pairs.length === 1
+        ? `One pair of beneficiary records in ${place.blockName} ${exact ? 'shares the same Aadhaar (hashed)' : 'has near-identical names with the same date of birth'} — likely an isolated data-entry duplicate.`
+        : `${pairs.length} pairs of beneficiary records in ${place.blockName} look like the same person enrolled more than once — ${exact} share the same Aadhaar (hashed) and ${fuzzy} have near-identical names with the same date of birth. Most are enrolled in two pension schemes, which should not overlap.`,
     method: `Exact salted-hash match, plus same block + same DOB + name similarity ≥ ${ANOMALY.fuzzyNameThreshold} (Jaro-Winkler / normalised Levenshtein).`,
     count: pairs.length,
     amountAtRisk: monthlyAtRisk,
