@@ -2,9 +2,14 @@
   "name": "sevalens",
   "private": true,
   "version": "0.1.0",
-  "description": "SevaLens — Welfare Coverage Intelligence for Manipur (AI4SEVA SW-04 prototype)",
-  "workspaces": ["packages/*", "apps/*"],
-  "engines": { "node": ">=20" },
+  "description": "SevaLens \u2014 Welfare Coverage Intelligence for Manipur (AI4SEVA SW-04 prototype)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "setup": "npm install && npm run db:migrate && npm run db:seed",
     "db:generate": "npm run db:generate -w @sevalens/api",
@@ -13,7 +18,8 @@
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @sevalens/api\" \"npm run dev -w @sevalens/web\"",
     "build": "npm run build -w @sevalens/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test -w @sevalens/api"
+    "test": "npm run test -w @sevalens/api",
+    "start": "npm run build && npm run start -w @sevalens/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

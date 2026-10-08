@@ -42,6 +42,7 @@ describe('toLLMPayload — PII never reaches the LLM', () => {
   });
 
   it('keeps the aggregate statistics', () => {
+    expect(toLLMPayload({ dataAsOf: '2026-10-08', note: 'dob 2026-10-08' })).toEqual({ dataAsOf: '2026-10-08', note: 'dob [redacted-date]' });
     expect(out).toMatchObject({ district: 'Ukhrul', coverage: 0.749, blocks: [{ block: 'Chingai', open: 12 }], anomalies: [{ type: 'Possible duplicates', observed: '50 pairs' }] });
   });
 });

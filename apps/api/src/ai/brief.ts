@@ -3,7 +3,7 @@ import type { Brief } from '@sevalens/shared';
 import { sqlite } from '../db/client';
 import { summarizePendency } from '../analytics';
 import type { Snapshot } from '../services/snapshot';
-import { aiModel, callJson, LlmUnavailable } from './llm';
+import { aiEnabled, aiModel, callJson, LlmUnavailable } from './llm';
 import { toLLMPayload } from './sanitize';
 
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -68,7 +68,10 @@ export function templateBrief(f: BriefFacts): Omit<Brief, 'districtId' | 'source
   const actions: string[] = [];
   if (f.coverage < 0.6) actions.push(`Launch a targeted enrolment camp in the lowest-coverage blocks (${f.blocks.filter((b) => b.coverage < 0.6).slice(0, 3).map((b) => b.block).join(', ') || 'see block table'}), using Anganwadi/ASHA networks and mobile outreach for remote villages.`);
   else if (f.coverage < 0.8) actions.push('Run door-to-door verification drives with Anganwadi/ASHA workers to identify eligible non-enrolled households.');
-  if (f.breached >= 10) actions.push('Assign additional verification staff or a time-bound special drive to clear overdue field verifications; review the oldest cases first.');
+  if (f.breached >= 10) {
+    const stage = [...f.stages].sort((a, b) => b.breached - a.breached)[0].stage.toLowerCase();
+    actions.push(`Run a time-bound special drive to clear cases overdue at ${stage} (assign additional staff where needed); start with the oldest cases.`);
+  }
   if (f.failureRate > 0.05) actions.push('Reconcile failed/returned payments with the bank/PFMS: check account-Aadhaar seeding and re-push failed batches.');
   if (f.anomalies.some((a) => a.type.includes('duplicate'))) actions.push('Freeze payments to suspected duplicate records pending verification and de-duplicate across pension schemes.');
   if (f.anomalies.some((a) => a.type.includes('death'))) actions.push('Stop payments to beneficiaries recorded as deceased and initiate recovery; link the death registry to the pension MIS.');
@@ -119,7 +122,9 @@ export async function generateBrief(s: Snapshot, districtId: number, refresh: bo
   const key = `brief:${districtId}:${s.asOf}`;
   if (!refresh) {
     const cached = sqlite.prepare('SELECT content FROM insights_cache WHERE key = ?').get(key) as { content: string } | undefined;
-    if (cached) return JSON.parse(cached.content) as Brief;
+    const prev = cached ? (JSON.parse(cached.content) as Brief) : null;
+    // a template brief cached while AI was offline is regenerated once AI becomes available
+    if (prev && (prev.source === 'llm' || !aiEnabled())) return prev;
   }
   const facts = briefFacts(s, districtId);
   const base = templateBrief(facts);

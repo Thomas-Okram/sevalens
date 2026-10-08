@@ -23,6 +23,8 @@ export function createApp() {
           imgSrc: ["'self'", 'data:', 'https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           connectSrc: ["'self'"],
+          // demo may be served over plain HTTP on a LAN address
+          upgradeInsecureRequests: null,
         },
       },
     }),

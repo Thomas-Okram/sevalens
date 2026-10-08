@@ -43,7 +43,8 @@ export function toLLMPayload(input: unknown, depth = 0): unknown {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
       if (!ALLOWED_KEYS.has(k) || FORBIDDEN_KEYS.includes(k)) continue;
-      out[k] = toLLMPayload(v, depth + 1);
+      // the snapshot date is not personal data; every other full date is redacted
+      out[k] = k === 'dataAsOf' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : toLLMPayload(v, depth + 1);
     }
     return out;
   }
