@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-navy-950: #061226;
+  --color-navy-900: #0B1F3A;
+  --color-navy-800: #132c50;
+  --color-navy-700: #1d3a66;
+  --color-teal-500: #14B8A6;
+  --color-teal-600: #0d9488;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-slate-100 text-slate-800 antialiased; font-size: 14px; }
