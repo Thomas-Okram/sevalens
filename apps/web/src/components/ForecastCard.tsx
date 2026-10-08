@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { api, qs } from '../lib/api';
 import { useMeta } from '../lib/queries';
@@ -68,6 +68,21 @@ function ForecastTooltip({ active, payload, label, f }: TooltipProps<number, str
   );
 }
 
+// Recharts' legend lists the band series by their data keys, so the legend is drawn here instead.
+function ForecastLegend({ coverage }: { coverage: number }) {
+  const line = (color: string, dashed?: boolean) => (
+    <svg width="18" height="6" aria-hidden><line x1="0" y1="3" x2="18" y2="3" stroke={color} strokeWidth="2" strokeDasharray={dashed ? '5 3' : undefined} /></svg>
+  );
+  return (
+    <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+      <span className="inline-flex items-center gap-1.5">{line(SERIES.primary)} Open applications</span>
+      <span className="inline-flex items-center gap-1.5">{line(SERIES.secondary)} Past SLA</span>
+      <span className="inline-flex items-center gap-1.5">{line('#64748b', true)} Forecast</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm bg-slate-400/30" /> {Math.round(coverage * 100)}% range</span>
+    </div>
+  );
+}
+
 export function ForecastCard({ districtId }: { districtId: number }) {
   const meta = useMeta();
   const [blockId, setBlockId] = useState('');
@@ -107,10 +122,9 @@ export function ForecastCard({ districtId }: { districtId: number }) {
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={buildRows(f)} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke={GRID} />
-              <XAxis dataKey="date" tickFormatter={fmtDay} tick={{ fill: AXIS, fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+              <XAxis dataKey="date" tickFormatter={fmtDay} tick={{ fill: AXIS, fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={36} />
               <YAxis tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <RTooltip content={<ForecastTooltip f={f} />} />
-              <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />
               <Area dataKey="openBand" stroke="none" fill={SERIES.primary} fillOpacity={0.15} legendType="none" isAnimationActive={false} />
               <Area dataKey="breachedBand" stroke="none" fill={SERIES.secondary} fillOpacity={0.15} legendType="none" isAnimationActive={false} />
               <Line dataKey="open" name="Open applications" stroke={SERIES.primary} strokeWidth={2} dot={false} />
@@ -119,6 +133,7 @@ export function ForecastCard({ districtId }: { districtId: number }) {
               <Line dataKey="breachedF" name="Past SLA (forecast)" stroke={SERIES.secondary} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2 }} legendType="none" />
             </ComposedChart>
           </ResponsiveContainer>
+          <ForecastLegend coverage={f.coverage} />
         </>
       )}
     </Card>

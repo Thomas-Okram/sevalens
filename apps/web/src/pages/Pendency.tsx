@@ -62,7 +62,7 @@ export default function Pendency() {
           <input type="checkbox" checked={f.breachedOnly === 'true'} onChange={(e) => set('breachedOnly', e.target.checked ? 'true' : '')} className="h-4 w-4 accent-teal-600" />
           Past SLA only
         </label>
-        {q.isFetching && <span className="mb-2 text-xs text-slate-400">Updating…</span>}
+        {q.isFetching && <span className="mb-2 text-xs text-slate-500">Updating…</span>}
       </div>
 
       {q.isError ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !d ? (
@@ -114,8 +114,8 @@ export default function Pendency() {
               )}
             </Card>
 
-            <Card className="lg:col-span-5" title="Stage bottlenecks" subtitle="Where open applications are waiting" info="Open applications by current processing stage, split into within-SLA and past-SLA. The longest red bar is the bottleneck.">
-              <ResponsiveContainer width="100%" height={260}>
+            <Card className="lg:col-span-5 lg:self-start" title="Stage bottlenecks" subtitle="Where open applications are waiting" info="Open applications by current processing stage, split into within-SLA and past-SLA. The longest red bar is the bottleneck.">
+              <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={d.summary.stages.map((s) => ({ label: s.label, within: s.count - s.breached, breached: s.breached }))} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }} barCategoryGap={10}>
                   <CartesianGrid horizontal={false} stroke={GRID} />
                   <XAxis type="number" tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -149,13 +149,13 @@ export default function Pendency() {
                     {d.items.map((a) => (
                       <tr key={a.id} className="border-t border-slate-100">
                         <td className="px-4 py-1.5 font-mono text-xs text-slate-700">{a.refNo}</td>
-                        <td className="px-3 py-1.5">{a.applicantMasked}</td>
+                        <td className="whitespace-nowrap px-3 py-1.5">{a.applicantMasked}</td>
                         <td className="px-3 py-1.5">{a.schemeName}</td>
-                        <td className="px-3 py-1.5">{a.blockName} <span className="text-[11px] text-slate-500">{a.districtName}</span></td>
-                        <td className="px-3 py-1.5 tabular-nums">{fmtDate(a.submittedAt)}</td>
+                        <td className="px-3 py-1.5 leading-tight">{a.blockName}<div className="text-[11px] text-slate-500">{a.districtName}</div></td>
+                        <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{fmtDate(a.submittedAt)}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">{a.ageDays}d</td>
-                        <td className="px-3 py-1.5">{a.stageLabel}</td>
-                        <td className="px-3 py-1.5">
+                        <td className="whitespace-nowrap px-3 py-1.5">{a.stageLabel}</td>
+                        <td className="whitespace-nowrap px-3 py-1.5">
                           {a.breached ? (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700"><AlertOctagon className="h-3.5 w-3.5" /> +{a.ageDays - a.slaDays}d over</span>
                           ) : (

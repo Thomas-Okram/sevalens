@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 import { useMeta } from '../lib/queries';
 import { fmtDate } from '../lib/format';
 import { FACTOR_COLOR } from '../lib/theme';
-import { Card, Loading, PageHeader, SyntheticBadge } from '../components/ui';
+import { Card, ErrorState, Loading, PageHeader, SyntheticBadge } from '../components/ui';
 
 const FACTOR_LABEL: Record<string, string> = { coverageGap: 'Coverage gap', slaBreach: 'SLA breach', anomalies: 'Anomalies', disbursementFailure: 'Payment failures', remoteness: 'Remoteness' };
 
@@ -54,7 +54,7 @@ export default function Privacy() {
             <li>• AI status: <b>{m?.ai.enabled ? `enabled (${m.ai.model})` : 'not configured — offline fallbacks active'}</b></li>
           </ul>
           <div className="text-xs font-medium text-slate-500"><Eye className="mr-1 inline h-3.5 w-3.5" />Exact payload for an officer brief ({m?.districts.find((d) => d.id === previewDistrict)?.name}):</div>
-          {preview.data ? (
+          {preview.isError ? <div className="mt-1"><ErrorState error={preview.error} onRetry={() => preview.refetch()} /></div> : preview.data ? (
             <pre className="mt-1 max-h-72 overflow-auto rounded-lg bg-navy-950 p-3 text-[11px] leading-relaxed text-teal-100">{JSON.stringify(preview.data.payload, null, 2)}</pre>
           ) : <Loading />}
         </Card>
@@ -75,7 +75,7 @@ export default function Privacy() {
                 </div>
                 <p className="mt-3 text-xs text-slate-500">Score = 100 × Σ weight × normalised factor (0–1, fixed scales). High ≥ {m.levels.high}, medium ≥ {m.levels.medium}. Remoteness raises attention because remote areas need more outreach effort — it is a geographic factor only.</p>
               </>
-            ) : <Loading />}
+            ) : meta.isError ? <ErrorState error={meta.error} onRetry={() => meta.refetch()} /> : <Loading />}
           </Card>
 
           <Card title={<span className="flex items-center gap-1.5"><ServerCog className="h-4 w-4 text-teal-600" /> Anomaly methods</span>}>

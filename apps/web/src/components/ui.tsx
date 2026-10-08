@@ -78,15 +78,16 @@ export function PageHeader({ title, subtitle, actions }: { title: ReactNode; sub
 
 export function KpiTile({ label, value, sub, info, tone, icon }: { label: string; value: ReactNode; sub?: ReactNode; info: ReactNode; tone?: Severity; icon?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="@container min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm xl:px-3.5">
       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
         {icon}
-        <span className="truncate">{label}</span>
+        <span className="truncate" title={label}>{label}</span>
         <InfoTip content={info} />
       </div>
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="mt-1 flex items-center gap-2">
         <span className="text-2xl font-semibold tabular-nums tracking-tight text-navy-900">{value}</span>
-        {tone && <SeverityBadge severity={tone} compact />}
+        {/* Seven tiles share a 1366px row, so narrow tiles show the level icon only (label stays in title + screen-reader text). */}
+        {tone && <SeverityBadge severity={tone} compact labelClassName="sr-only @[9.5rem]:not-sr-only" />}
       </div>
       {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
     </div>
@@ -95,7 +96,7 @@ export function KpiTile({ label, value, sub, info, tone, icon }: { label: string
 
 const SEV_ICON = { low: CheckCircle2, medium: AlertTriangle, high: AlertOctagon };
 
-export function SeverityBadge({ severity, label, compact }: { severity: Severity; label?: string; compact?: boolean }) {
+export function SeverityBadge({ severity, label, compact, labelClassName }: { severity: Severity; label?: string; compact?: boolean; labelClassName?: string }) {
   const Icon = SEV_ICON[severity];
   const styles = {
     low: 'bg-green-50 text-green-800 ring-green-600/25',
@@ -103,9 +104,9 @@ export function SeverityBadge({ severity, label, compact }: { severity: Severity
     high: 'bg-red-50 text-red-800 ring-red-600/25',
   }[severity];
   return (
-    <span className={cx('inline-flex items-center gap-1 rounded-full font-medium ring-1 ring-inset', compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs', styles)}>
+    <span className={cx('inline-flex items-center gap-1 rounded-full font-medium ring-1 ring-inset', compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs', styles)} title={labelClassName ? label ?? SEV_LABEL[severity] : undefined}>
       <Icon className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} style={{ color: SEV_COLOR[severity] }} aria-hidden />
-      {label ?? SEV_LABEL[severity]}
+      {labelClassName ? <span className={labelClassName}>{label ?? SEV_LABEL[severity]}</span> : label ?? SEV_LABEL[severity]}
     </span>
   );
 }

@@ -184,7 +184,7 @@ function AnomalyDrawer({ anomalyKey, onClose }: { anomalyKey: string; onClose: (
   const benCols = new Set(['aId', 'bId', 'id']);
   return (
     <div className="fixed inset-0 z-[1500] flex justify-end bg-navy-950/40" onClick={onClose}>
-      <div className="flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Anomaly records">
+      <div className="flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Anomaly records">
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           {d ? (
             <div>

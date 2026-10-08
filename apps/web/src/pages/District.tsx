@@ -42,7 +42,7 @@ export default function District() {
         title={
           <span className="flex items-center gap-3">
             {user?.role === 'STATE_ADMIN' && <Link to="/" className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-navy-900" aria-label="Back to overview"><ArrowLeft className="h-4 w-4" /></Link>}
-            {dist?.name ?? '…'} district
+            {dist ? `${dist.name} district` : <Skeleton className="h-6 w-48" />}
             {dist && <ScorePill score={dist.attention.score} level={dist.attention.level} />}
           </span>
         }
@@ -74,7 +74,7 @@ export default function District() {
                     <div className="flex items-baseline justify-between gap-2 text-xs">
                       <span className="flex items-center gap-1.5 font-medium text-slate-700">
                         <span className="h-2.5 w-2.5 rounded-sm" style={{ background: FACTOR_COLOR[f.key] }} />
-                        {f.label} <span className="font-normal text-slate-400">· weight {Math.round(f.weight * 100)}%</span>
+                        {f.label} <span className="font-normal text-slate-500">· weight {Math.round(f.weight * 100)}%</span>
                       </span>
                       <span className="font-semibold tabular-nums text-navy-900">+{f.points.toFixed(1)}</span>
                     </div>

@@ -21,7 +21,7 @@ export default function Audit() {
       <PageHeader title="Audit log" subtitle="Every sign-in, record view, AI use, export and review — visible to state admins only"
         actions={<Button variant="secondary" onClick={() => q.refetch()}><RefreshCw className="h-4 w-4" /> Refresh</Button>} />
       <Card bodyClass="p-0" title="Recent activity" subtitle="Latest 500 entries" actions={<Select label="" value={action} onChange={setAction} options={[{ value: '', label: 'All actions' }, ...actions.map((a) => ({ value: a, label: ACTION_LABEL[a] ?? a }))]} />}>
-        {q.isError ? <div className="p-4"><ErrorState error={q.error} /></div> : !q.data ? <Loading /> : entries.length === 0 ? <Empty title="No audit entries" /> : (
+        {q.isError ? <div className="p-4"><ErrorState error={q.error} onRetry={() => q.refetch()} /></div> : !q.data ? <Loading /> : entries.length === 0 ? <Empty title="No audit entries" /> : (
           <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">

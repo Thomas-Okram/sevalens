@@ -65,7 +65,7 @@ export function ManipurMap({ districts, height = 420 }: { districts: DistrictSum
           ))}
         </div>
         <div className="mt-0.5">Circle size = coverage gap (est. eligible not enrolled)</div>
-        {!tilesOk && <div className="mt-0.5 text-slate-400">Offline mode · approximate state outline</div>}
+        {!tilesOk && <div className="mt-0.5 text-slate-500">Offline mode · approximate state outline</div>}
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ export function Layout() {
   const meta = useMeta();
   const loc = useLocation();
   const nav = [
-    { to: '/', label: 'State overview', icon: LayoutDashboard, end: true, show: true },
+    { to: '/', label: user?.role === 'STATE_ADMIN' ? 'State overview' : 'Overview', icon: LayoutDashboard, end: true, show: true },
     { to: user?.districtId ? `/districts/${user.districtId}` : '/districts', label: user?.districtId ? `${user.districtName} district` : 'District drill-down', icon: MapPinned, show: true },
     { to: '/pendency', label: 'Pendency', icon: Hourglass, show: true },
     { to: '/anomalies', label: 'Anomalies', icon: ScanSearch, show: true },

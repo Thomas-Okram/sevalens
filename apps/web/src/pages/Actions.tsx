@@ -121,7 +121,7 @@ function ActionCard({ a }: { a: FieldAction }) {
         )}
       </div>
       {(move.isError || del.isError) && <div className="mt-1 text-xs text-red-700">{((move.error ?? del.error) as Error).message}</div>}
-      <div className="mt-1 text-[10px] text-slate-400">Raised by {a.createdByName} · {fmtDate(a.createdAt)}</div>
+      <div className="mt-1 text-[11px] text-slate-500">Raised by {a.createdByName} · {fmtDate(a.createdAt)}</div>
     </article>
   );
 }

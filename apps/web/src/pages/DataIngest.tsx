@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, Download, FileSpreadsheet, ShieldCheck, Uploa
 import type { Severity } from '@sevalens/shared';
 import { api, ApiError } from '../lib/api';
 import { fmtInt } from '../lib/format';
-import { Button, Card, Empty, ErrorState, KpiTile, PageHeader, ScorePill, cx } from '../components/ui';
+import { Button, Card, Empty, ErrorState, KpiTile, PageHeader, ScorePill, Skeleton, cx } from '../components/ui';
 
 interface RowIssue { row: number; field: string; message: string }
 interface IngestResult {
@@ -117,7 +117,7 @@ export default function DataIngest() {
         </Card>
 
         <Card title="Expected columns" subtitle={ref.data ? `Dates up to ${ref.data.asOf} (data date)` : undefined}>
-          {ref.isError ? <ErrorState error={ref.error} /> : !ref.data ? <div className="h-32" /> : (
+          {ref.isError ? <ErrorState error={ref.error} onRetry={() => ref.refetch()} /> : !ref.data ? <Skeleton className="h-32" /> : (
             <div className="space-y-2 text-xs text-slate-600">
               <div className="flex flex-wrap gap-1">
                 {ref.data.columns.map((c) => (

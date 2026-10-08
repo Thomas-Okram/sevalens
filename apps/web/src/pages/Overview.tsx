@@ -18,7 +18,8 @@ export default function Overview() {
   const { user } = useAuth();
   const q = useOverview();
   const actions = useActions();
-  const [level, setLevel] = useState<'district' | 'block'>('district');
+  // A district officer's list would hold a single district, so start them on their blocks.
+  const [level, setLevel] = useState<'district' | 'block'>(user?.role === 'STATE_ADMIN' ? 'district' : 'block');
   const navigate = useNavigate();
 
   if (q.isError) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
@@ -29,7 +30,7 @@ export default function Overview() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="State overview" subtitle={`${scope} · 6 welfare schemes · coverage, pendency, anomalies and where to act first`} />
+      <PageHeader title={user?.role === 'STATE_ADMIN' ? 'State overview' : `${user?.districtName} overview`} subtitle={`${scope} · 6 welfare schemes · coverage, pendency, anomalies and where to act first`} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {!k ? (
@@ -55,12 +56,8 @@ export default function Overview() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-6" title="Manipur — coverage gap & attention" info="Each circle is a district HQ. Size = estimated eligible people not enrolled (gap). Colour + legend = Attention Score level. Click a circle to drill down." bodyClass="p-3">
-          {d ? <ManipurMap districts={d.districts} /> : <Skeleton className="h-[420px]" />}
-        </Card>
-
         <Card
-          className="lg:col-span-6"
+          className="lg:col-span-7"
           title="Areas needing attention"
           info={<>Attention Score (0–100) = 100 × Σ weight × normalised factor. Weights: coverage gap 30%, SLA breach 20%, anomalies 20%, payment failures 15%, remoteness 15%. Hover a bar for the full breakdown. ≥ 45 high, ≥ 30 medium.</>}
           actions={
@@ -83,7 +80,7 @@ export default function Overview() {
                   <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="w-8 px-3 py-2">#</th>
-                      <th className="w-[32%] px-2 py-2">Area</th>
+                      <th className="w-[30%] px-2 py-2">Area</th>
                       <th className="w-[100px] px-2 py-2">Score</th>
                       <th className="px-3 py-2">Why</th>
                     </tr>
@@ -91,7 +88,7 @@ export default function Overview() {
                   <tbody>
                     {ranked.slice(0, 30).map((a, i) => (
                       <tr key={`${a.entityType}-${a.entityId}`} onClick={() => navigate(`/districts/${a.districtId}`)} className="cursor-pointer border-t border-slate-100 hover:bg-teal-50/40">
-                        <td className="px-3 py-2 text-xs tabular-nums text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-2 text-xs tabular-nums text-slate-500">{i + 1}</td>
                         <td className="px-2 py-2">
                           <div className="truncate font-medium text-navy-900">{a.name}</div>
                           {a.entityType === 'block' && <div className="text-[11px] text-slate-500">{a.districtName}</div>}
@@ -99,7 +96,7 @@ export default function Overview() {
                         <td className="px-2 py-2"><ScorePill score={a.score} level={a.level} /></td>
                         <td className="px-3 py-2">
                           <FactorBar attention={a} />
-                          <div className="mt-1 truncate text-[11px] text-slate-500" title={a.topReason}>{a.topReason}</div>
+                          <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-600" title={a.topReason}>{a.topReason}</div>
                         </td>
                       </tr>
                     ))}
@@ -109,6 +106,10 @@ export default function Overview() {
               <div className="border-t border-slate-100 px-4 py-2"><FactorLegend /></div>
             </>
           )}
+        </Card>
+
+        <Card className="lg:col-span-5" title="Manipur — coverage gap & attention" info="Each circle is a district HQ. Size = estimated eligible people not enrolled (gap). Colour + legend = Attention Score level. Click a circle to drill down." bodyClass="p-3">
+          {d ? <ManipurMap districts={d.districts} /> : <Skeleton className="h-[420px]" />}
         </Card>
       </div>
 
